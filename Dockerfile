@@ -4,37 +4,38 @@ FROM ubuntu:24.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates wget curl jq unzip xz-utils \
+        ca-certificates wget curl jq unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Создаём директории
 RUN mkdir -p /TS
 
-# TorrServer — последняя версия с официального репозитория
+# TorrServer — последняя версия с YouROK/TorrServer
 ARG TARGETARCH
 ARG TARGETVARIANT
 
-RUN arch=$(echo "${TARGETARCH}" | sed 's/amd64/x86_64/;s/arm64/aarch64/;s/arm/v7l/' | \
-           sed 's/386/386/;s//unknown/') && \
-    case "$arch" in \
-        x86_64|aarch64|armv7l|386) \
-            wget -q "https://github.com/torrserver/server/releases/latest/download/TorrServer-linux-${arch}" \
-                 -O /TS/TorrServer && chmod +x /TS/TorrServer ;; \
-        *) echo "Unsupported arch: $TARGETARCH" && exit 1 ;; \
-    esac
-
-# ffprobe — статическая сборка от johnvansickle (всегда живой)
 RUN case "${TARGETARCH}" in \
-        amd64)  JV_ARCH=amd64   ;; \
-        arm64)  JV_ARCH=arm64   ;; \
-        arm/v7) JV_ARCH=armhf   ;; \
-        *)      JV_ARCH=amd64   ;; \
+        amd64)  TS_ARCH=amd64   ;; \
+        arm64)  TS_ARCH=arm64   ;; \
+        arm/v7) TS_ARCH=arm7    ;; \
+        *)      TS_ARCH=amd64   ;; \
     esac && \
-    wget -q "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-${JV_ARCH}-static.tar.xz" && \
-    tar xf ffmpeg-release-${JV_ARCH}-static.tar.xz && \
-    cp ffmpeg-*-static/ffprobe /usr/local/bin/ffprobe && \
+    VERSION=$(curl -s https://api.github.com/repos/YouROK/TorrServer/releases/latest | jq -r .tag_name) && \
+    wget -q "https://github.com/YouROK/TorrServer/releases/download/${VERSION}/TorrServer-linux-${TS_ARCH}" \
+         -O /TS/TorrServer && chmod +x /TS/TorrServer
+
+# ffprobe — с ffbinaries.com
+RUN case "${TARGETARCH}" in \
+        amd64)  FF_ARCH=64   ;; \
+        arm64)  FF_ARCH=arm-64   ;; \
+        arm/v7) FF_ARCH=armhf-32   ;; \
+        *)      FF_ARCH=64   ;; \
+    esac && \
+    FF_URL=$(curl -s https://ffbinaries.com/api/v1/version/latest | jq -r ".bin[] | select(.ffprobe != null and contains(\"linux-${FF_ARCH}\")) | .ffprobe") && \
+    wget -q "$FF_URL" -O /tmp/ffprobe.zip && \
+    unzip -o /tmp/ffprobe.zip -d /usr/local/bin/ && \
     chmod +x /usr/local/bin/ffprobe && \
-    rm -rf ffmpeg-*
+    rm /tmp/ffprobe.zip
 
 # Финальный минимальный образ
 FROM ubuntu:24.04
