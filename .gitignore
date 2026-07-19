@@ -1,0 +1,6 @@
+.freebuff/
+config.db
+*.db-shm
+*.db-wal
+ts.jpg
+
