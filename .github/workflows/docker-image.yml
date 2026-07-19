@@ -16,15 +16,20 @@ jobs:
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Login to Docker Hub
-        if: github.ref == 'refs/heads/main' && secrets.DOCKER_USERNAME != ''
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      - name: Login to Docker Hub (if secrets set)
+        run: |
+          if [ -n "${{ secrets.DOCKER_USERNAME }}" ] && [ -n "${{ secrets.DOCKER_PASSWORD }}" ]; then
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          else
+            echo "Docker Hub secrets not set — skipping login"
+          fi
 
       - name: Build and push
         run: |
           TAGS="ghcr.io/${{ github.repository }}:latest"
           if [ -n "${{ secrets.DOCKER_USERNAME }}" ]; then
             TAGS="$TAGS,${{ secrets.DOCKER_USERNAME }}/tortor:latest"
+            echo "Will also push to Docker Hub"
           fi
           docker buildx build . --push --file Dockerfile --tag "$TAGS" \
             --platform linux/amd64,linux/arm64,linux/arm/v7
