@@ -32,8 +32,10 @@ chmod +x /TS/updates/TorrServer
 
 VER=$(/TS/updates/TorrServer --version 2>/dev/null)
 CUR=$(/TS/TorrServer --version 2>/dev/null)
-[ -n "$VER" ] && [ "$VER" != "$CUR" ] && echo "Update to $VER..." && \
-  mkdir -p "$TS_CONF_PATH/backup" && cp -f /TS/TorrServer "$TS_CONF_PATH/backup/" && \
+if [ -n "$VER" ] && [ "$VER" != "$CUR" ]; then
+  echo "Update to $VER..."
+  mkdir -p "$TS_CONF_PATH/backup" && cp -f /TS/TorrServer "$TS_CONF_PATH/backup/"
   cp -f /TS/updates/TorrServer /TS/TorrServer && chmod +x /TS/TorrServer
-pkill TorrServer 2>/dev/null
-/TS/TorrServer --path="$TS_CONF_PATH/" --torrentsdir="$TS_TORR_DIR" --port="$TS_PORT" $TS_OPTIONS &
+  pkill TorrServer 2>/dev/null
+  /TS/TorrServer --path="$TS_CONF_PATH/" --torrentsdir="$TS_TORR_DIR" --port="$TS_PORT" $TS_OPTIONS &
+fi
