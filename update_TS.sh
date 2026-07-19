@@ -21,8 +21,11 @@ if [ -n "$BIP_URL" ]; then
       sed '/^#/d; s/[[:blank:]]//g' | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}(-[0-9]{1,3}(\.[0-9]{1,3}){3})?' | \
       sed -r 's/\b0+([0-9])/\1/g' | grep -vE '^(0|22[4-9]|2[3-5]|192\.168)' | sort -t. -k1,1n -k2,2n -k3,3n -k4,4n -u > bip.txt
     rm -f "bip_raw.$EXT"
-    [ $(wc -l <bip.txt) -gt 0 ] && cp -f bip.txt "$TS_CONF_PATH/bip.txt" && chmod a+r "$TS_CONF_PATH/bip.txt" && pkill TorrServer && \
+    if [ $(wc -l <bip.txt) -gt 0 ]; then
+      cp -f bip.txt "$TS_CONF_PATH/bip.txt" && chmod a+r "$TS_CONF_PATH/bip.txt"
+      pkill TorrServer 2>/dev/null; sleep 2
       cd "$TS_TORR_DIR" && /TS/TorrServer --path="$TS_CONF_PATH/" --torrentsdir="$TS_TORR_DIR" --port="$TS_PORT" $TS_OPTIONS &
+    fi
 fi
 
 echo "$(date): TorrServer update..."
@@ -36,6 +39,6 @@ if [ -n "$VER" ] && [ "$VER" != "$CUR" ]; then
   echo "Update to $VER..."
   mkdir -p "$TS_CONF_PATH/backup" && cp -f /TS/TorrServer "$TS_CONF_PATH/backup/"
   cp -f /TS/updates/TorrServer /TS/TorrServer && chmod +x /TS/TorrServer
-  pkill TorrServer 2>/dev/null
+  pkill TorrServer 2>/dev/null; sleep 2
   /TS/TorrServer --path="$TS_CONF_PATH/" --torrentsdir="$TS_TORR_DIR" --port="$TS_PORT" $TS_OPTIONS &
 fi
