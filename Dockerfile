@@ -15,8 +15,7 @@ COPY start_TS.sh update_TS.sh /
 RUN chmod a+x /start_TS.sh /update_TS.sh && \
     apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -y ca-certificates tzdata wget curl procps cron file jq unzip && \
-    apt-get clean && mkdir /TS && chmod -R 666 /TS && \
-    mkdir -p "$TS_CONF_PATH" && chmod -R 666 "$TS_CONF_PATH" && \
+    apt-get clean && mkdir -p /TS /TS/db && chmod 666 /TS /TS/db && \
     wget --no-check-certificate --user-agent="$USER_AGENT" -qO /TS/TorrServer --tries=3 \
     "$(curl -s $TS_URL | grep -oE 'https?://[^\" ]+' | grep -i "$(uname)" | \
     grep -i "$(dpkg --print-architecture | sed 's/armhf/arm7/g; s/i386/386/g')")" && \
