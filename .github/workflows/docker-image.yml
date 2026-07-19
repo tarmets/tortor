@@ -1,5 +1,10 @@
 name: Docker CI
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -7,6 +12,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      - run: echo "IMAGE=ghcr.io/${{ github.repository }}" >> $GITHUB_ENV
-      - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - run: docker buildx build . --push --file Dockerfile --tag ${{ env.IMAGE }} --platform linux/amd64,linux/arm64,linux/arm/v7
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Login to Docker Hub
+        if: github.ref == 'refs/heads/main' && secrets.DOCKER_USERNAME != ''
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Build and push
+        run: |
+          TAGS="ghcr.io/${{ github.repository }}:latest"
+          if [ -n "${{ secrets.DOCKER_USERNAME }}" ]; then
+            TAGS="$TAGS,${{ secrets.DOCKER_USERNAME }}/tortor:latest"
+          fi
+          docker buildx build . --push --file Dockerfile --tag "$TAGS" \
+            --platform linux/amd64,linux/arm64,linux/arm/v7
