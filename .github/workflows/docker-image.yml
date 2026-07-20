@@ -1,7 +1,9 @@
 name: Docker CI
+
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
 
@@ -27,12 +29,27 @@ jobs:
             echo "Docker Hub secrets not set — skipping login"
           fi
 
+      - name: Compute Docker tags
+        id: tags
+        run: |
+          # Always latest
+          TAGS="ghcr.io/${{ github.repository }}:latest"
+          if [ -n "${{ secrets.DOCKER_USERNAME }}" ]; then
+            TAGS="$TAGS,${{ secrets.DOCKER_USERNAME }}/tortor:latest"
+          fi
+          # If this is a version tag (e.g. v1.0, v2.3.1), also tag with the version
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VER="${{ github.ref_name }}"
+            TAGS="$TAGS,ghcr.io/${{ github.repository }}:${VER}"
+            if [ -n "${{ secrets.DOCKER_USERNAME }}" ]; then
+              TAGS="$TAGS,${{ secrets.DOCKER_USERNAME }}/tortor:${VER}"
+            fi
+            echo "Will also push version tags: ${VER}"
+          fi
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+
       - name: Build and push
         run: |
-          TAGS="--tag ghcr.io/${{ github.repository }}:latest"
-          if [ -n "${{ secrets.DOCKER_USERNAME }}" ]; then
-            TAGS="$TAGS --tag ${{ secrets.DOCKER_USERNAME }}/tortor:latest"
-            echo "Will also push to Docker Hub"
-          fi
-          docker buildx build . --push --file Dockerfile $TAGS \
+          docker buildx build . --push --file Dockerfile \
+            $(echo "${{ steps.tags.outputs.tags }}" | sed 's/,/ --tag /g') \
             --platform linux/amd64,linux/arm64,linux/arm/v7
